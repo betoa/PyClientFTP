@@ -5,9 +5,9 @@
 
 import socket               
 import sys
+import os
 import time
 import string
-import time
 import array
 import base64
 
@@ -39,19 +39,21 @@ def connect():
 ##        response= f.read()
 ####        f.close()
 ####        s.close()
-
+def send(us):
+	s.sendall(us + "\n") 
 
 ##++LOGIN2 (USER, PASSWD) ++++++++
 def user():
-	print ('USER: ')
-	user = sys.stdin.readline()
-	s.sendall(user)
-	time.sleep(1) #pausa para no recibir muy rapido
-	rec = s.recv(1024)
-	if "331 " in rec:
-		passwd() #Usuario valido, pedir password
-	else:
-		print ("Invalid username") #usuario invalido
+        print ('USER: ')
+        user = sys.stdin.readline()
+#        s.send(user)
+        send("USER "+user[:-1])
+        time.sleep(1) #pausa para no recibir muy rapido
+        rec = s.recv(1024)
+        if "331 " in rec:
+                passwd() #Usuario valido, pedir password
+        else:
+                print ("Invalid username") #usuario invalido
 
 def passwd():
 	print ('PASSWORD: ')
