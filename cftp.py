@@ -11,7 +11,7 @@ import time
 import array
 import base64
 
-
+nws = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
 def connect():
@@ -67,26 +67,29 @@ def passwd():
 
 #****
 #*********
-
+		
+def loggit():
+	timestamp = strftime("%Y-%m-%d %H:%M:%S", gmtime()) #Make timestamp
+	log.write(timestamp + " " + s + '\n')
+	
 #LISTADO
 def list():
 	print ("What file would you like to use?")
 	sendstr = sys.stdin.readline()
-	send("LIST "+sendstr[:-1])
-	print ("Please wait")
-	time.sleep(40)
-	rec = receive()
+	s.sendall(sendstr)
+	print ("Please wait..")
+	time.sleep(10)
+	rec = s.recv(1024)
 	if "450 " in rec:
-		print ("El Directorio no existe")
+		print ("No File..")
 	elif "150 " in rec:
 		print ("Sending ascii list")
-		#Saving list to a file
 		output = open("list", "wb")
 		loggit("File, list opened")
 		loggit("Reading file data from socket...")
 		#Start write loop
 		while 1:
-			filedata = newsock.recv(1024) #receive data from socket
+			filedata = nws.recv(1024) #receive data from socket
 			if not filedata:
 				#if there is no data being read, exit the loop
 				break;
@@ -97,7 +100,7 @@ def list():
 		output.close() #close the file
 		loggit("File, list closed")
 	else:
-		print (rec[:4])
+		print (s.recv(1024))
     
 if __name__ == '__main__':
 
