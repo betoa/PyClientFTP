@@ -18,7 +18,7 @@ usr = socket.socket(socket.SOCK_STREAM, socket.SOCK_STREAM)
 def connect21():
     try:
         host = input('HOST: ')
-        print('***Connecting to port 21***')
+        print('***Connecting to '+host+':21***')
         time.sleep(.5)
         s.connect((host, 21))
         print (s.recv(1024))
@@ -147,7 +147,29 @@ def list():
 		loggit("File, list closed")
 	else:
 		print (s.recv(1024))
-		
+#*****
+def recv_archivo(s,archivo):
+    timeout=1
+    s.setblocking(0)
+    Rdatos=False #datos recibidos
+    inicio=time.time()
+    archivo = open(archivo, 'archivo')
+    while True:
+        if Rdatos and time.time()-inicio>timeout:
+            break
+        try:
+            datos=s.recv(1024)
+            if datos:
+                Rdatos = True
+                archivo.write(datos)
+              
+                inicio=time.time()
+            else:
+                time.sleep(1)
+        except:
+            pass
+    archivo.close()
+
 #****
 #*****MAIN****
 
