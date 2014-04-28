@@ -9,36 +9,79 @@ import os
 import time
 import string
 import array
-import base64
+import ssl, pprint, getpass, telnetlib
 
 nws = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+usr = socket.socket(socket.SOCK_STREAM, socket.SOCK_STREAM)
 
-def connect():
+def connect21():
     try:
-        s.connect((input('HOST: '),int(input('PORT: '))))
+        host = input('HOST: ')
+        print('***Connecting to port 21***')
+        time.sleep(.5)
+        s.connect((host, 21))
         print (s.recv(1024))
+        user()
+        passwd()
+        #**********USER + PASSWD , intento
+##        print ('USER: ')
+##        user = sys.stdin.readline()
+##        print ('PASSWD: ')
+##        password = sys.stdin.readline()
+###       send("USER "+user[:-1])
+##        usr.connect((user,password))
+##        time.sleep(2) #pausa para no recibir muy rapido
+## #       send(user)
+##        rec = s.recv(1024)
+##        if "230 " in rec:
+##                print("Password accepted!")
+##                print (recv(1024))
+##        else:
+##                print ("Password not accepted")
+        #***********
 #       s.close                     #Cerrar Socket
     except socket.error as error:
         print('*******Server Error*******\n') %(error)
         pass
 
-#****************
-#*** LOGIN 1   +++++++++
-##def login():
-##        user = (input('USER: '))
-##        passwd = (input('PASSWORD: '))
-##        userb = user.encode('utf-8')
-##        passwdb = passwd.encode('utf-8')
-##        print(userb, passwdb)
-##        token = (base64.encodestring('%s:%s' % (userb, passwdb)).strip())
-##        s= socket.socket()
-##        s.connect(('192.100.230.21', 80))
-##        f= s.makefile('rwb', bufsize=0)
-##        f.write('\r\n'.join(lines)+'\r\n\r\n')
-##        response= f.read()
-####        f.close()
-####        s.close()
+def connect():
+    try:
+        host = input('HOST: ')
+        ##Ports MENU
+        print ("-"*60)
+        print ("Specify port to host: "+host)
+        #**** OPTION 1
+##        print ("""
+##        1)Use default list
+##        2)Specify your own port list""")
+##        print ("-"*60)
+##        opt2 = int(input("Please choose an option\n"))
+##        if opt2 == 1:
+##            #puerto por default
+##            ports = (22, 23, 24, 25, 80, 110, 135, 139, 443, 445, 553, 3306, 3389, 8080)
+##        if opt2 == 2:
+##            ports = input("Please enter the ports you would like scanned.\neg. 22, 23\n>>")
+##        print ("Ok, here we go..")
+##        
+##        ports = [int(port.strip()) for port in ports.split(',')]
+##
+##        for port in ports:
+##            #abrir socket con el nuevo puerto
+##            connect = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
+##            connect.connect_ex((host, port))
+        #*****
+        port = int(input('PORT: '))
+        print ("-"*60)
+        time.sleep(.4)
+        nws.connect_ex((host,port))#socket declarado al principio del codigo        
+        print (nws.recv(1024))
+        user()
+        passwd()
+    except socket.error as error:
+        print('*******Server Error*******\n') %(error)
+        pass
+
 def send(us):
 	s.sendall(us + "\n") 
 
@@ -46,15 +89,17 @@ def send(us):
 def user():
         print ('USER: ')
         user = sys.stdin.readline()
-#        s.send(user)
-        send("USER "+user[:-1])
-        time.sleep(1) #pausa para no recibir muy rapido
-        rec = s.recv(1024)
+#       send("USER "+user[:-1])
+        s.sendall((user))
+        time.sleep(2) #pausa para no recibir muy rapido
+#       send(user)
+        rec = (s.recv(1024))
         if "331 " in rec:
                 passwd() #Usuario valido, pedir password
         else:
                 print ("Invalid username") #usuario invalido
-
+#ERROR AL TRANSMITIR USER: 'str' does not support buffer interface!!
+                
 def passwd():
 	print ('PASSWORD: ')
 	password = sys.stdin.readline()
@@ -67,7 +112,6 @@ def passwd():
 	else:
 		print ("Password not accepted")
 
-#****
 #*********
 		
 def loggit():
@@ -103,15 +147,30 @@ def list():
 		loggit("File, list closed")
 	else:
 		print (s.recv(1024))
-    
+		
+#****
+#*****MAIN****
+
 if __name__ == '__main__':
 
-    print('1. Conectar a FTP')
-    opt = int(input())
-    if opt == 1:
-        connect()
-##        login()
-        user()
-        passwd()
-            
-    
+    try:
+        opt = int(1)
+        while opt != 0:
+                print ("-"*60)
+                print ("                    CLIENT FTP")
+                print ("-"*60)
+                print ("""                1. Connect via FTP (Port 21)
+                2. Connect via FTP (Different Port)
+                3. Know IP of and Address """)
+                print("-"*60)
+                opt = int(input("Choose an Option-> "))
+                if opt == 1:
+                    connect21()
+                if opt == 2:
+                    connect()
+                if opt == 3:
+                    ip = socket.gethostbyname(input('Address: '))
+                    print('IP: '+ip+'\n')
+    except socket.error as err:
+        print('**Socket ERROR** \n')%(err)
+        pass
