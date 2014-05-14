@@ -1,6 +1,6 @@
-import socket
-import time
-import getpass
+import socket,time,getpass
+import sys,re,os,string
+
 
 menu = '''
 -------------------------------------
@@ -24,10 +24,10 @@ upload (filename)   # Upload a File
 download (filename) # Download a File 
 mkdir (directory)   # Make Directory
 pwd                 # Working Directory
-rmd                 # Remove Directory
+rmd (directoryname) # Remove Directory
 rm (filename)       # Remove File
 --------------------------------------
-Option -> '''
+'''
 
                
 def recv_timeout(s,timeout=2):
@@ -87,22 +87,63 @@ def open_socket(HOST, PORT):
     print(s.recv(1024))
     return s
 
-def pasv_socket(s):
-    response = request(s, 'PASV')
-    if not process_response(response, 'PASV'):
-        return None
+def pasv_socket(ins):
+    if (ins.s == socket.AF_INET):
+        host,port = parse227(ins.process_response('PASV'))
+    else:
+        host, port = parse229 (process_response(response, 'PASV'))
+        return open_socket(host,port)
     
-    iptext = response.split(' ')[4].replace('(', '').replace(')','').split(',')
-    HOST = '%(1)s.%(2)s.%(3)s.%(4)s' % { '1' : iptext[0], '2' : iptext[1], '3' : iptext[2], '4' : iptext[3] }
-    PORT = int(iptext[4]) * 256 + int(iptext[5])
+##    iptext = response.split(' ')[4].replace('(', '').replace(')','').split(',')
+##    HOST = '%(1)s.%(2)s.%(3)s.%(4)s' % { '1' : iptext[0], '2' : iptext[1], '3' : iptext[2], '4' : iptext[3] }
+##    PORT = int(iptext[4]) * 256 + int(iptext[5])
 ##    m = response.search(r'(\d+),(\d+),(\d+),(\d+),(\d+),(\d+)', reply[1])
 ##    s.dataAddr = (m.group(1) + '.' + m.group(2) + '.' + m.group(3) + '.' + m.group(4), int(m.group(5)) * 256 + int(m.group(6)))
 ##    s.dataMode = 'PASV'
 ##    HOST = '%(1)s.%(2)s.%(3)s.%(4)s' % { '1' : m.group(1), '2' : m.group(2), '3' : m.group(3), '4' : m.group(4) }
 ##    PORT = int(m.group(4) * 256 + int(m.group(5)))
-               
-    return open_socket(HOST, PORT)
+#    reply = s.parseReply()
+##    if response[0] <= 3:
+##        m = re.search(r'(\d+),(\d+),(\d+),(\d+),(\d+),(\d+)', reply[1])
+##        HOST = (m.group(1) + '.' + m.group(2) + '.' + m.group(3) + '.' + m.group(4))
+##        PORT = int(m.group(5)) * 256 + int(m.group(6))
+#        s.dataMode = 'PASV'
+#    return open_socket(HOST, PORT)
 
+def parse227(serverresponse):
+    if serverresponse[:3] != '227':
+        raise error_reply(serverresponse)
+    global _227_re
+    if _227_re is None:
+        import re
+        _227_re = re.compile(r'(\d+),(\d+),(\d+),(\d+),(\d+),(\d+)', re.ASCII)
+    m = _227_re.search(serverresponse)
+    if not m:
+        raise error_proto(serverresponse)
+    numbers = m.groups()
+    host = '.'.join(numbers[:4])
+    port = (int(numbers[4]) << 8) + int(numbers[5])
+    return open_socket(host,port)
+
+def recoil(s, usrcomand, callback = None):
+    if callback is None: callback = print_line
+    serverresponse = s.sendusrcomand('TYPE A')
+    with s.transferusrcomand(usrcomand) as conn, \
+             conn.makefile('r', encoding=s.encoding) as fp:
+        while 1:
+            line = fp.readline(s.buffer_size + 1)
+            if len(line) > s.buffer_size:
+                raise Error("got more than %d bytes" % s.buffer_size)
+            if s.debugging > 2: print('*retr*', repr(line))
+            if not line:
+                break
+            if line[-2:] == '\r\n':
+                line = line[:-2]
+            elif line[-1:] == '\n':
+                line = line[:-1]
+            callback(line)
+    return s.voidserverresponse()
+    
 def process_response(response, command):
     comandos = { 'USER' : [331], 'PASS' : [230], 'CONN' : [220], 'PWD'  : [257], 'CWD'  : [250], 'RMD'  : [250], 'MKD'  : [257], 'LIST' : [150,226], 'RETR' : [150,226], 'STOR' : [150,226], 'PASV' : [227], 'QUIT' : [221], 'DELE' : [250] }
     if response == '':
@@ -129,11 +170,11 @@ def ls(s):
     file_socket.close()
 
 def login(s):
-    user = str(input('User: '))
-    passw = str(input('Password: '))
+#    user = str(input('User: '))
+#    passw = str(input('Password: '))
     print('Logging In...')
-#    user = 'userftp'
-#    passw = 'r3d3sf1s1c@s'
+    user = 'userftp'
+    passw = 'r3d3sf1s1c@s'
     if not process_response(request(s, 'USER ' + user), 'USER'):
         print ('Invalid user')
         return False
@@ -228,44 +269,45 @@ def rm(s, filename):
     return True
     
 def connect():
-    HOST = input('HOST: ')
-    PORT = int(input('PORT: '))
+#    HOST = input('HOST: ')
+#    PORT = int(input('PORT: '))
     print('Connecting...')
-#    HOST = '192.100.230.21'
-#    PORT = 21
+    HOST = '192.100.230.21'
+    PORT = 21
     socketc = open_socket(HOST, PORT)
     login(socketc)
 
     return socketc
 def connect21():
-    HOST = input('HOST: ')
-#        HOST = '192.100.230.21'
+#    HOST = input('HOST: ')
+    HOST = '192.100.230.21'
     print('Conecting to '+HOST+':21')
     socketc = open_socket(HOST,21)
     login(socketc)
     return socketc
 
-if __name__ == '__main__':
+def print_line(line):
+    print(line)
     
+if __name__ == '__main__':
+
     socketc = None
     print(menu)
     opt = int(input())
     if opt == 1:
         socketc = connect21()
+        print(lista)
     if opt == 2:
         socketc = connect()
+        print(lista)
     if opt == 3:
         ip = socket.gethostbyname(input('ADDRESS: '))
         print('IP: '+ip)
         socketc = connect()
-    else:
-        socketc = connect()
-
-    while True:
         print(lista)
-        opc = str(input()).split(' ')
+    while True:
+        opc = str(input('-> ')).split(' ')
         command = opc[0]
-        
         if command == 'pwd':
             pwd(socketc)
         elif command == 'cd':
@@ -287,3 +329,4 @@ if __name__ == '__main__':
             exit()
         else:
             print ('Invalid Option')
+
